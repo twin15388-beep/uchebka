@@ -53,41 +53,107 @@ def par(b, text, spacing=1.0, first=True, bold=False, after=0, size=14,
 
 
 # ------------------------------------------------------------------ титул
+def _run(p, text, bold=False, underline=False, size=14):
+    r = p.add_run(text)
+    _set_run_font(r, size=size, bold=bold, color="000000")
+    if underline:
+        r.font.underline = True
+    return r
+
+
 def title_page(b):
-    cpar(b, "государственное автономное профессиональное образовательное учреждение")
-    cpar(b, "Самарской области")
+    cpar(b, "государственное автономное профессиональное образовательное "
+            "учреждение Самарской области")
     cpar(b, "«Новокуйбышевский гуманитарно-технологический колледж»")
-    blank(b, 6)
+    blank(b, 8)
     cpar(b, "ОТЧЕТ", bold=True)
     cpar(b, "ПО УЧЕБНОЙ ПРАКТИКЕ", bold=True)
     blank(b, 1)
     cpar(b, "ПМ.05 Проектирование и разработка информационных систем", bold=True)
+    blank(b, 1)
     cpar(b, "09.02.07 Информационные системы и программирование", bold=True)
-    blank(b, 8)
+    blank(b, 6)
 
+    # блок с данными студента: без рамки, выровнен вправо
     t = b.doc.add_table(rows=5, cols=1)
-    t.style = "Table Grid"
-    t.alignment = WD_TABLE_ALIGNMENT.CENTER
+    tblPr = t._tbl.tblPr
+    for tag in ("w:tblStyle", "w:tblBorders"):
+        el = tblPr.find(qn(tag))
+        if el is not None:
+            tblPr.remove(el)
+    borders = OxmlElement("w:tblBorders")
+    for side in ("top", "left", "bottom", "right", "insideH", "insideV"):
+        e = OxmlElement(f"w:{side}")
+        e.set(qn("w:val"), "none")
+        e.set(qn("w:sz"), "0")
+        e.set(qn("w:space"), "0")
+        e.set(qn("w:color"), "auto")
+        borders.append(e)
+    tblPr.append(borders)
+    jc = OxmlElement("w:jc")
+    jc.set(qn("w:val"), "right")
+    tblPr.append(jc)
     t.autofit = False
-    data = [
-        f"Студента {FIO}\n",
-        f"Гр. {GROUP}\n",
-        "Руководитель практики\nЕлизаров Максим Вячеславович\nУртяков Вячеслав Алексеевич\n",
-        "Оценка____________________\n",
-        "Подпись____________/Елизаров М.В./\n\nПодпись____________/Уртяков В.А./\n\n",
-    ]
-    for i, text in enumerate(data):
-        cell = t.cell(i, 0)
-        cell.width = Cm(16.5)
-        first = True
-        for line in text.split("\n"):
-            p = cell.paragraphs[0] if first else cell.add_paragraph()
-            first = False
-            p.paragraph_format.first_line_indent = Cm(0)
-            p.paragraph_format.line_spacing = 1.0
-            p.paragraph_format.space_after = Pt(0)
-            _set_run_font(p.add_run(line), size=14, color="000000")
-    blank(b, 4)
+    width = Cm(9.74)
+    t.columns[0].width = width
+    for row in t.rows:
+        row.cells[0].width = width
+        trPr = row._tr.get_or_add_trPr()
+        trjc = OxmlElement("w:jc")
+        trjc.set(qn("w:val"), "right")
+        trPr.append(trjc)
+
+    def cell_par(cell, first=False):
+        p = cell.paragraphs[0] if first else cell.add_paragraph()
+        pf = p.paragraph_format
+        pf.first_line_indent = Cm(0)
+        pf.line_spacing = 1.0
+        pf.space_before = Pt(0)
+        pf.space_after = Pt(0)
+        return p
+
+    c0 = t.cell(0, 0).paragraphs[0]
+    c0.paragraph_format.first_line_indent = Cm(0)
+    c0.paragraph_format.line_spacing = 1.0
+    _run(c0, "Студента", bold=True)
+    _run(c0, " ")
+    _run(c0, FIO, underline=True)
+    cell_par(t.cell(0, 0))
+
+    c1 = t.cell(1, 0).paragraphs[0]
+    c1.paragraph_format.first_line_indent = Cm(0)
+    c1.paragraph_format.line_spacing = 1.0
+    _run(c1, "Гр. ", bold=True)
+    _run(c1, GROUP, underline=True)
+    cell_par(t.cell(1, 0))
+
+    c2 = t.cell(2, 0).paragraphs[0]
+    c2.paragraph_format.first_line_indent = Cm(0)
+    c2.paragraph_format.line_spacing = 1.0
+    _run(c2, "Руководитель практики", bold=True)
+    _run(cell_par(t.cell(2, 0)), "Елизаров Максим Вячеславович", underline=True)
+    _run(cell_par(t.cell(2, 0)), "Уртяков Вячеслав Алексеевич", underline=True)
+    cell_par(t.cell(2, 0))
+
+    c3 = t.cell(3, 0).paragraphs[0]
+    c3.paragraph_format.first_line_indent = Cm(0)
+    c3.paragraph_format.line_spacing = 1.0
+    _run(c3, "Оценка", bold=True)
+    _run(c3, "__________")
+    cell_par(t.cell(3, 0))
+
+    c4 = t.cell(4, 0).paragraphs[0]
+    c4.paragraph_format.first_line_indent = Cm(0)
+    c4.paragraph_format.line_spacing = 1.0
+    _run(c4, "Подпись", bold=True)
+    _run(c4, "____________/Елизаров М.В./")
+    _run(cell_par(t.cell(4, 0)), "Подпись", bold=True)
+    p = t.cell(4, 0).paragraphs[-1]
+    _run(p, "____________/Уртяков В.А./")
+    cell_par(t.cell(4, 0))
+    cell_par(t.cell(4, 0))
+
+    blank(b, 6)
     cpar(b, "2026")
     b.page_break()
 
