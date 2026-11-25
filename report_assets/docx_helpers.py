@@ -424,3 +424,118 @@ class Builder:
 
     def save(self, path):
         self.doc.save(path)
+
+
+def _extra_methods(cls):
+    """Дополнительные методы оформления под структуру отчёта-образца."""
+
+    def p_right(self, text, bold=True, size=14, space_before=0, space_after=0):
+        p = self.doc.add_paragraph()
+        pf = p.paragraph_format
+        pf.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+        pf.first_line_indent = Cm(0)
+        pf.line_spacing = 1.0
+        pf.space_before = Pt(space_before)
+        pf.space_after = Pt(space_after)
+        run = p.add_run(text)
+        _set_run_font(run, size=size, bold=bold, color="000000")
+        self._need(LINE_PT)
+        return p
+
+    def fig(self, path, caption, width_cm=15.0, sep=". "):
+        """Рисунок с подписью вида «Рисунок N. Подпись»."""
+        with Image.open(path) as im:
+            w, h = im.size
+        height_cm = width_cm * h / w
+        p = self.doc.add_paragraph()
+        pf = p.paragraph_format
+        pf.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        pf.first_line_indent = Cm(0)
+        pf.line_spacing = 1.0
+        pf.space_before = Pt(6)
+        pf.space_after = Pt(2)
+        pf.keep_with_next = True
+        run = p.add_run()
+        run.add_picture(path, width=Cm(width_cm))
+        if caption is None:
+            self._need((height_cm + 0.5) * 28.35)
+            return p
+        self.fig_no += 1
+        cap = self.doc.add_paragraph()
+        cpf = cap.paragraph_format
+        cpf.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        cpf.first_line_indent = Cm(0)
+        cpf.line_spacing = 1.0
+        cpf.space_before = Pt(0)
+        cpf.space_after = Pt(10)
+        r = cap.add_run(f"Рисунок {self.fig_no}{sep}{caption}")
+        _set_run_font(r, size=14, color="000000")
+        self._need((height_cm + 0.9) * 28.35)
+        return p
+
+    def bullet_item(self, text, style="List Bullet", size=14, spacing=1.0):
+        p = self.doc.add_paragraph(style=style)
+        pf = p.paragraph_format
+        pf.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+        pf.line_spacing = spacing
+        pf.space_before = Pt(0)
+        pf.space_after = Pt(0)
+        run = p.add_run(text)
+        _set_run_font(run, size=size, color="000000")
+        lines = max(1, math.ceil(len(text) / CHARS_PER_LINE))
+        self._need(lines * LINE_PT * spacing)
+        return p
+
+    def sub(self, text, size=14, spacing=1.5):
+        """Подзаголовок внутри приложения — полужирный, с отступом."""
+        p = self.doc.add_paragraph()
+        pf = p.paragraph_format
+        pf.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+        pf.first_line_indent = Cm(1.25)
+        pf.line_spacing = spacing
+        pf.space_before = Pt(6)
+        pf.space_after = Pt(0)
+        pf.keep_with_next = True
+        run = p.add_run(text)
+        _set_run_font(run, size=size, bold=True, color="000000")
+        self._need(LINE_PT * spacing + 8)
+        return p
+
+    def bold_line(self, text, size=14, spacing=1.5):
+        p = self.doc.add_paragraph()
+        pf = p.paragraph_format
+        pf.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+        pf.first_line_indent = Cm(0)
+        pf.line_spacing = spacing
+        pf.space_before = Pt(0)
+        pf.space_after = Pt(0)
+        run = p.add_run(text)
+        _set_run_font(run, size=size, bold=True, color="000000")
+        self._need(LINE_PT * spacing)
+        return p
+
+    def appendix_head(self, number, title):
+        self.page_break()
+        self.p_right(f"Приложение {number}")
+        p = self.doc.add_paragraph()
+        pf = p.paragraph_format
+        pf.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        pf.first_line_indent = Cm(0)
+        pf.line_spacing = 1.0
+        pf.space_before = Pt(0)
+        pf.space_after = Pt(12)
+        pf.keep_with_next = True
+        run = p.add_run(title)
+        _set_run_font(run, size=14, bold=True, color="000000")
+        self._need(LINE_PT + 14)
+
+    cls.p_right = p_right
+    cls.fig = fig
+    cls.bullet_item = bullet_item
+    cls.sub = sub
+    cls.bold_line = bold_line
+    cls.appendix_head = appendix_head
+    return cls
+
+
+_extra_methods(Builder)
